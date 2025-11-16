@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Speech Text Entry Study – iOS Dictation</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 700px;
+      margin: 30px auto;
+      padding: 0 20px;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    h1 {
+      font-size: 1.6em;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #444;
+    }
+
+    .section {
+      background: white;
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 20px;
+    }
+
+    label {
+      margin-right: 6px;
+      font-weight: 500;
+    }
+
+    input, select {
+      padding: 6px 10px;
+      margin-right: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9em;
+    }
+
+    #prompt {
+      font-size: 1.2em;
+      margin: 20px 0;
+      font-weight: 500;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin-right: 10px;
+      font-size: 0.9em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      background: #f0f0f0;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    #recognized {
+      width: 100%;
+      height: 80px;
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #fafafa;
+      font-size: 0.9em;
+      resize: none;
+    }
+
+    #status {
+      color: #555;
+      font-size: 0.9em;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+
+    .recording-banner {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      border: 1px solid #fbbf24;
+      background: #fef9c3;
+      color: #854d0e;
+      display: none;
+    }
+
+    .recording-banner.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Speech Text Entry Study – iOS Dictation</h1>
+
+  <div class="section">
+    <p>
+      <strong>Instructions:</strong> Press <em>Start</em>, then tap the
+      <strong>microphone icon</strong> on your keyboard and read the sentence
+      exactly as shown. When you finish speaking, tap <em>Done</em> on the keyboard
+      and then press <em>Stop</em>.
+    </p>
+
+    <label>Participant Name:</label>
+    <input id="participantName" placeholder="John">
+
+    <label>Language:</label>
+    <select id="lang">
+      <option value="es-ES">Spanish</option>
+      <option value="en-US">English</option>
+    </select>
+
+    <label>Dataset:</label>
+    <select id="dataset">
+      <option value="A">Dataset A</option>
+      <option value="B">Dataset B</option>
+    </select>
+  </div>
+
+  <div id="prompt" class="section"></div>
+
+  <div class="section">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <button id="nextBtn" disabled>Next Phrase</button>
+
+    <div id="recordingBanner" class="recording-banner">
+      Recording window active: please tap the <strong>keyboard mic</strong> and dictate the sentence.
+      Do not type manually.
+    </div>
+
+    <h3>Recognized Text (from dictation)</h3>
+    <textarea id="recognized"></textarea>
+
+    <p id="status"></p>
+
+    <button id="downloadBtn">Download CSV</button>
+  </div>
+
+  <script>
+    // ---------- Phrase sets (same structure as your main file) ----------
+
+    const phrasesEN_A = [
+      "Walking a tightrope in the dark",
+      "keeping your cool under pressure",
+      "right place at the perfect time",
+      "taking the long way around it",
+      "make the most of every moment",
+      "running in circles once again",
+      "caught in the middle of the mess",
+      "leave it better than you found it",
+      "counting your blessings quietly",
+      "stuck between here and nowhere",
+      "falling back into old habits",
+      "going along with the main crowd",
+      "trust your instincts every time",
+      "pushing past your comfort zone",
+      "holding on by a tiny strong thread",
+      "going through the motions again",
+      "lost in thought for a short while",
+      "don’t make things harder than they are",
+      "underestimating the obvious signs",
+      "heading in the right direction now",
+      "waiting for the dust to finally settle",
+      "sailing into calmer waters ahead",
+      "you can’t have it both ways here",
+      "don’t let the moment slip away",
+      "take responsibility for it all now",
+      "living life one step at a time",
+      "think carefully before you make it",
+      "nowhere to go but forward today",
+      "don’t let doubts weigh you down",
+      "focused on what matters most now",
+      "finding clarity in the mid chaos",
+      "moving toward a clearer mindset",
+      "over the hurdle at last again",
+      "staying one step ahead once more",
+      "follow the signs that you are given",
+      "making the best of all the mess",
+      "put in the work day after long day",
+      "nothing changes if nothing moves",
+      "whispering what you truly really mean",
+      "turning problems into some progress",
+      "breaking free from the old limits",
+      "take a breath before reacting now",
+      "keep learning from the setbacks here",
+      "rising above the noise once again",
+      "don’t lose sight of your true goals",
+      "stick with it through the big storm",
+      "even the smallest step still counts",
+      "searching for the right solution now",
+      "everything takes time to truly grow",
+      "balancing everything all at once",
+      "be patient with the whole process",
+      "stay grounded fully in the moment",
+      "choose progress over perfection now",
+      "one step closer every single day",
+      "don’t repeat the same old mistake",
+      "holding steady through the big chaos",
+      "shifting your mindset just slowly",
+      "take chances while you still can",
+      "create your own calm for today",
+      "let the journey teach you well now"
+    ];
+
+    const phrasesEN_B = [
+      "don’t put off what you can do",
+      "walking into unknown territory",
+      "patience is a virtue indeed",
+      "learning from each mistake made",
+      "finding peace in every moment",
+      "never bite off more than you can",
+      "giving your all without holding back",
+      "things are not always as they seem",
+      "chasing dreams that feel so distant",
+      "the calm before the storm appears",
+      "standing tall when times get tough",
+      "facing challenges without looking back",
+      "embracing change with an open mind",
+      "every cloud has a silver lining",
+      "taking the scenic route today",
+      "don’t look back, move forward now",
+      "one step closer to your true goal",
+      "living fully while time slips away",
+      "never underestimate small victories",
+      "turning mistakes into great lessons",
+      "keep pushing when others give up",
+      "focusing on what really matters now",
+      "never stop chasing what feels right",
+      "clarity comes after the loud chaos",
+      "rise above when the world feels heavy",
+      "make time for what you truly love",
+      "the road less traveled calls you here",
+      "don’t let fear keep you from moving",
+      "keep hope alive in the darkest times",
+      "small efforts lead to bigger results",
+      "one moment can change everything now",
+      "let go of things you cannot control",
+      "take responsibility for your actions",
+      "seeking balance in the everyday life",
+      "don’t let the past define who you are",
+      "celebrate the little wins along the way",
+      "courage is doing what scares you most",
+      "perseverance wins where talent fails",
+      "embrace the unknown with full heart",
+      "listen more than you speak each day",
+      "focus on solutions instead of problems",
+      "give yourself grace when things fail",
+      "every ending brings a new beginning",
+      "look for beauty in unexpected places",
+      "be kind even when it’s not returned",
+      "live with intention, not by habit",
+      "rise early to see the world awake",
+      "cherish moments that cannot be bought",
+      "take action before the chance is gone",
+      "the smallest seed can grow the tallest tree",
+      "find joy in things that last a moment",
+      "create memories that will last forever",
+      "don’t be afraid to ask for guidance",
+      "move forward even when scared inside",
+      "hope is the light in darkest places",
+      "listen to your heart, not just your head",
+      "trust the process even when unclear",
+      "follow the path that feels the right one",
+      "let your journey shape who you become",
+      "taking life one day at a time"
+    ];
+
+    const phrasesES_A = [
+      "Caminando por la cuerda floja en la oscuridad",
+      "Manteniendo la calma bajo presión",
+      "En el lugar correcto en el momento perfecto",
+      "Tomando el camino más largo",
+      "Aprovechando al máximo cada momento",
+      "Dando vueltas en círculos una vez más",
+      "Atrapado en medio del caos",
+      "Dejándolo mejor de como lo encontraste",
+      "Contando tus bendiciones en silencio",
+      "Atrapado entre la nada y el abismo",
+      "Recayendo en viejos hábitos",
+      "Siguiendo a la multitud",
+      "Confía siempre en tus instintos",
+      "Superando tus límites",
+      "Aferrándote a un hilo de esperanza",
+      "Repitiendo la rutina",
+      "Perdido en tus pensamientos por un instante",
+      "No compliques las cosas",
+      "Subestimando las señales evidentes",
+      "Ahora en la dirección correcta",
+      "Esperando a que se calmen las aguas",
+      "Navegando hacia aguas más tranquilas",
+      "No puedes tenerlo todo",
+      "No dejes escapar el momento",
+      "Asume la responsabilidad ahora",
+      "Viviendo la vida paso a paso",
+      "Piensa bien antes de actuar",
+      "Hoy solo queda seguir adelante",
+      "No dejes que las dudas te agobien",
+      "Concentrado en lo que más importa ahora",
+      "Encontrando Claridad en medio del caos",
+      "Avanzando hacia una mentalidad más clara",
+      "Superando el obstáculo una vez más",
+      "Manteniéndome un paso adelante",
+      "Sigue las señales que se te presentan",
+      "Aprovechando al máximo el desorden",
+      "Trabajando día tras día",
+      "Nada cambia si nada se mueve",
+      "Susurrando lo que realmente piensas",
+      "Convirtiendo los problemas en progreso",
+      "Liberándote de los viejos límites",
+      "Respira hondo antes de reaccionar",
+      "Sigue aprendiendo de los contratiempos",
+      "Elevándote por encima del ruido una vez más",
+      "No pierdas de vista tus verdaderos objetivos",
+      "Persevera durante la tormenta",
+      "Incluso el paso más pequeño cuenta",
+      "Buscando la solución adecuada",
+      "Todo necesita tiempo para crecer",
+      "Equilibrando todo a la vez",
+      "Sé paciente con todo el proceso",
+      "Mantente presente en el momento",
+      "Elige el progreso sobre la perfección",
+      "Un paso más cerca cada día",
+      "No repitas el mismo error",
+      "Manteniéndote firme en medio del caos",
+      "Cambiando tu mentalidad poco a poco",
+      "Arriésgate mientras puedas",
+      "Crea tu propia calma hoy",
+      "Deja que el camino te enseñe ahora"
+    ];
+
+    const phrasesES_B = [
+      "No postergues lo que puedes hacer",
+      "Adentrándote en territorio desconocido",
+      "La paciencia es una virtud",
+      "Aprendiendo de cada error",
+      "Encontrando paz en cada momento",
+      "Nunca te comprometas a más de lo que puedes",
+      "Dándolo todo sin reservas",
+      "Las cosas no siempre son lo que parecen",
+      "Persiguiendo sueños que parecen lejanos",
+      "La calma antes de la tormenta aparece",
+      "Manteniéndote firme cuando las cosas se ponen difíciles",
+      "Afrontando los desafíos sin mirar atrás",
+      "Aceptando el cambio con la mente abierta",
+      "No hay mal que por bien no venga",
+      "Tomando la ruta panorámica hoy",
+      "No mires atrás, avanza ahora",
+      "Un paso más cerca de tu verdadero objetivo",
+      "Viviendo plenamente mientras el tiempo se escapa",
+      "Nunca subestimes las pequeñas victorias",
+      "Convirtiendo los errores en grandes lecciones",
+      "Sigue adelante cuando otros se rinden",
+      "Enfocándote en lo que realmente importa ahora",
+      "Nunca dejes de perseguir lo que sientes que es correcto",
+      "La claridad llega después del ruidoso caos",
+      "Elevándote por encima de todo cuando el mundo se siente pesado",
+      "Dedica tiempo a lo que realmente amas",
+      "El camino menos transitado te llama aquí",
+      "No dejes que el miedo te detenga",
+      "Mantén viva la esperanza en los momentos más oscuros",
+      "Los pequeños esfuerzos conducen a grandes resultados",
+      "Un momento Puedes cambiarlo todo ahora.",
+      "Suelta lo que no puedes controlar.",
+      "Hazte responsable de tus actos.",
+      "Busca el equilibrio en tu día a día.",
+      "No dejes que el pasado te defina.",
+      "Celebra los pequeños triunfos.",
+      "La valentía es hacer lo que más miedo te da.",
+      "La perseverancia triunfa donde el talento falla.",
+      "Abraza lo desconocido con todo tu corazón.",
+      "Escucha más de lo que hablas cada día.",
+      "Céntrate en las soluciones, no en los problemas.",
+      "Sé amable contigo mismo cuando las cosas no salgan bien.",
+      "Cada final trae un nuevo comienzo.",
+      "Busca la belleza en lugares inesperados.",
+      "Sé amable aunque no te lo devuelvan.",
+      "Vive con intención, no por costumbre.",
+      "Levántate temprano para ver el mundo despierto.",
+      "Aprecia los momentos que no se pueden comprar.",
+      "Actúa antes de que se te escape la oportunidad.",
+      "La semilla más pequeña puede hacer crecer el árbol más alto.",
+      "Encuentra alegría en las cosas efímeras.",
+      "Crea recuerdos para siempre.",
+      "No tengas miedo de pedir consejo.",
+      "Sigue adelante aunque tengas miedo.",
+      "La esperanza es la luz en la oscuridad.",
+      "Escucha a tu corazón, no solo a tu cabeza.",
+      "Confía en el proceso aunque no esté claro.",
+      "Sigue el camino que te parezca correcto. Uno",
+      "Deja que tu camino te defina",
+      "Viviendo la vida un día a la vez"
+    ];
+
+    // ---------- State & elements ----------
+
+    let phrases = [];
+    let idx = 0;
+    let currentPrompt = "";
+    let startTime = 0;
+    let results = [];
+
+    const promptEl = document.getElementById('prompt');
+    const recognizedEl = document.getElementById('recognized');
+    const statusEl = document.getElementById('status');
+    const participantNameEl = document.getElementById('participantName');
+    const langEl = document.getElementById('lang');
+    const datasetEl = document.getElementById('dataset');
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const recordingBanner = document.getElementById('recordingBanner');
+
+    function initPhrases() {
+      const lang = langEl.value;
+      const dataset = datasetEl.value;
+
+      if (lang === "es-ES") {
+        phrases = (dataset === "A") ? phrasesES_A.slice() : phrasesES_B.slice();
+      } else {
+        phrases = (dataset === "A") ? phrasesEN_A.slice() : phrasesEN_B.slice();
+      }
+
+      idx = 0;
+      showPrompt();
+    }
+
+    function showPrompt() {
+      if (idx >= phrases.length) {
+        promptEl.textContent = "All phrases complete.";
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+        nextBtn.disabled = true;
+        recordingBanner.classList.remove('active');
+        statusEl.textContent = "";
+        return;
+      }
+      currentPrompt = phrases[idx];
+      promptEl.textContent = (idx + 1) + ". " + currentPrompt;
+      recognizedEl.value = "";
+      statusEl.textContent = "";
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      nextBtn.disabled = true;
+      recordingBanner.classList.remove('active');
+    }
+
+    startBtn.onclick = () => {
+      // Start timing window; participant must tap keyboard mic themselves.
+      startTime = performance.now();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      nextBtn.disabled = true;
+      recognizedEl.focus();
+      // Show banner reminding them to tap mic.
+      recordingBanner.classList.add('active');
+      statusEl.textContent = "Recording window active. Tap the keyboard mic and dictate the sentence.";
+    };
+
+    stopBtn.onclick = () => {
+      const endTime = performance.now();
+      const durationS = (endTime - startTime) / 1000.0;
+      const transcript = (recognizedEl.value || "").trim();
+
+      stopBtn.disabled = true;
+      nextBtn.disabled = false;
+      recordingBanner.classList.remove('active');
+
+      if (!transcript) {
+        statusEl.textContent = "No text captured. You may repeat this phrase if needed.";
+        return;
+      }
+
+      const pname = participantNameEl.value || "noName";
+
+      results.push({
+        participantName: pname,
+        trial: idx + 1,
+        lang: langEl.value,
+        dataset: datasetEl.value,
+        prompt: currentPrompt,
+        transcript: transcript,
+        startMs: startTime,
+        endMs: endTime,
+        durationS: durationS
+      });
+
+      statusEl.textContent = "Captured. Press “Next Phrase” to continue.";
+    };
+
+    nextBtn.onclick = () => {
+      idx += 1;
+      showPrompt();
+    };
+
+    downloadBtn.onclick = () => {
+      if (results.length === 0) {
+        alert("No results to download yet.");
+        return;
+      }
+
+      const header = [
+        "participantName","trial","lang","dataset",
+        "prompt","transcript",
+        "startMs","endMs","durationS"
+      ];
+
+      const lines = [header.join(",")];
+
+      for (const r of results) {
+        lines.push([
+          r.participantName,
+          r.trial,
+          r.lang,
+          r.dataset,
+          '"' + r.prompt.replace(/"/g, "'") + '"',
+          '"' + r.transcript.replace(/"/g, "'") + '"',
+          r.startMs.toFixed(2),
+          r.endMs.toFixed(2),
+          r.durationS.toFixed(3)
+        ].join(","));
+      }
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "speech_results_ios.csv";
+      a.click();
+    };
+
+    langEl.onchange = initPhrases;
+    datasetEl.onchange = initPhrases;
+
+    initPhrases();
+  </script>
+</body>
+</html>
